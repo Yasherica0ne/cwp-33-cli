@@ -1,95 +1,95 @@
 const router = require('express').Router();
-const commitRouter = require('./commit');
-const context = require('../data');
+const getCommitRouter = require('./commit');
 
-router.get('/', async (req, res, next) => {
-    try {
-        req.ability.throwUnlessCan('read', 'Repo');
+function getRouter(context) {
+    const commitRouter = getCommitRouter(context);
 
-        const repos = await context.repos.findAll();
+    router.get('/', (req, res, next) => {
+        try {
+            req.ability.throwUnlessCan('read', 'Repo');
 
-        res.send(repos);
-    } catch (error) {
-        next(error);
-    }
-});
+            const repos = context.repos;
 
-router.post('/', async (req, res, next) => {
-    try {
-        req.ability.throwUnlessCan('create', 'Repo');
-
-        await context.repos.create(req.body);
-
-        res.sendStatus(200);
-    } catch (error) {
-        next(error);
-    }
-});
-
-router.param('id', async (req, res, next) => {
-    const repoId = Number.parseInt(req.params.id);
-
-    if (!isNaN(repoId)) {
-        const repo = await context.repos.findById(repoId);
-
-        if (repo) {
-            req.repoId = repoId;
-            next();
-        } else {
-            res.status(404).send('Repo doesn\'t exist');
+            res.send(repos);
+        } catch (error) {
+            next(error);
         }
+    });
 
-    } else {
-        res.status(400).send('Id is invalid');
-    }
-});
+    router.post('/', (req, res, next) => {
+        try {
+            req.ability.throwUnlessCan('create', 'Repo');
 
-router.get('/:id', async (req, res, next) => {
-    try {
-        req.ability.throwUnlessCan('read', 'Repo');
+            const repo = req.body;
+            repo.id = context.repos[context.repos.length - 1].id + 1;
+            context.repos.push(repo);
 
-        const repo = await context.repos.findById(req.params.id);
+            res.sendStatus(200);
+        } catch (error) {
+            next(error);
+        }
+    });
 
-        res.send(repo);
-    } catch (error) {
-        next(error);
-    }
-});
+    router.param('id', (req, res, next) => {
+        const repoId = Number.parseInt(req.params.id);
 
-router.put('/:id', async (req, res, next) => {
-    try {
-        const repo = await context.repos.findById(req.params.id);
+        if (!isNaN(repoId)) {
+            const repo = context.repos.filter(n => n.id == repoId).pop();
 
-        req.ability.throwUnlessCan('update', repo);
-
-        await context.repos.update(req.body, {
-            where: {
-                id: req.params.id
+            if (repo) {
+                req.repoId = repoId;
+                next();
+            } else {
+                res.status(404).send('Repo doesn\'t exist');
             }
-        });
 
-        res.sendStatus(200);
-    } catch (error) {
-        next(error);
-    }
-});
+        } else {
+            res.status(400).send('Id is invalid');
+        }
+    });
 
-router.delete('/:id', async (req, res, next) => {
-    try {
-        req.ability.throwUnlessCan('delete', 'Repo');
+    router.get('/:id', (req, res, next) => {
+        try {
+            req.ability.throwUnlessCan('read', 'Repo');
 
-        await context.repos.destroy({
-            where: {
-                id: req.params.id
-            }
-        });
+            const repo = context.repos.filter(n => n.id == req.params.id).pop();
 
-        res.sendStatus(200);
-    } catch (error) {
-        next(error);
-    }
-});
+            res.send(repo);
+        } catch (error) {
+            next(error);
+        }
+    });
 
-router.use('/:id/commits', commitRouter);
+    router.put('/:id', (req, res, next) => {
+        try {
+            //const repo = context.repos.filter(n => n.id == req.params.id);
 
-module.exports = router;
+            req.ability.throwUnlessCan('update', 'Repo');
+
+            context.repos = context.repos.filter(n => n.id != req.params.id);
+            context.repos.push(req.body);
+
+            res.sendStatus(200);
+        } catch (error) {
+            next(error);
+        }
+    });
+
+    router.delete('/:id', (req, res, next) => {
+        try {
+            req.ability.throwUnlessCan('delete', 'Repo');
+
+            context.commits = context.repos.filter(n => n.id != req.params.id);
+
+            res.sendStatus(200);
+        } catch (error) {
+            next(error);
+        }
+    });
+
+    router.use('/:id/commits', commitRouter);
+
+    return router;
+}
+
+module.exports = getRouter;

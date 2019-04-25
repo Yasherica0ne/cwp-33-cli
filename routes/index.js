@@ -1,10 +1,16 @@
 const router = require('express').Router();
-const repoRouter = require('./repo');
+const getRepoRouter = require('./repo');
 
-router.use('/repos', repoRouter);
+function getRouter(context) {
+    const repoRouter = getRepoRouter(context);
 
-router.use('/ability', (req, res) => {
-    res.send(req.ability.rules);
-});
+    router.use('/repos', repoRouter);
 
-module.exports = router;
+    router.use('/ability', (req, res) => {
+        res.send(req.ability.rules);
+    });
+    
+    return router;
+}
+
+module.exports = getRouter;

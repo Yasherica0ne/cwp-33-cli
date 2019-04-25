@@ -2,12 +2,9 @@ const http = require('http');
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Ability, AbilityBuilder, ForbiddenError } = require('casl');
-
 const context = require('./data');
-const insertData = require('./data/insert-data');
-const apiRouter = require('./routes');
-
-insertData(context);
+const getApiRouter = require('./routes');
+const apiRouter = getApiRouter(context);
 
 const app = express(http);
 
@@ -46,7 +43,8 @@ app.use('/api/', apiRouter);
 app.use((error, req, res, next) => {
     if (error instanceof ForbiddenError) {
         res.status(403).send({ message: error.message })
-    } else {
+    } 
+    else {
         res.send(error);
     }
 });
